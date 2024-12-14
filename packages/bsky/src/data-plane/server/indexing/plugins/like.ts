@@ -1,13 +1,13 @@
-import { Insertable, Selectable, sql } from 'kysely'
-import { AtUri, normalizeDatetimeAlways } from '@atproto/syntax'
+import { Insertable, RawBuilder, Selectable, sql } from 'kysely'
 import { CID } from 'multiformats/cid'
-import * as Like from '../../../../lexicon/types/app/bsky/feed/like'
+import { AtUri, normalizeDatetimeAlways } from '@atproto/syntax'
 import * as lex from '../../../../lexicon/lexicons'
+import * as Like from '../../../../lexicon/types/app/bsky/feed/like'
 import { BackgroundQueue } from '../../background'
-import { countAll, excluded } from '../../db/util'
 import { Database } from '../../db'
 import { DatabaseSchema, DatabaseSchemaType } from '../../db/database-schema'
 import { Notification } from '../../db/tables/notification'
+import { countAll, excluded } from '../../db/util'
 import { RecordProcessor } from '../processor'
 
 const lexId = lex.ids.AppBskyFeedLike
@@ -50,18 +50,36 @@ const insertBulkFn = async (
     timestamp: string
   }[],
 ): Promise<Array<IndexedLike>> => {
+  // Transpose into an array per column to bypass the length limit on VALUES lists
+  // sql.literal() is unsafe, so we compromise by not calling it on user-provided values
+  const toInsert: [
+    uri: Array<RawBuilder<unknown>>,
+    cid: Array<RawBuilder<unknown>>,
+    creator: Array<RawBuilder<unknown>>,
+    subject: Array<string>,
+    subjectCid: Array<string>,
+    createdAt: Array<RawBuilder<unknown>>,
+    indexedAt: Array<RawBuilder<unknown>>,
+  ] = [[], [], [], [], [], [], []]
+  for (const { uri, cid, obj, timestamp } of records) {
+    toInsert[0].push(sql.literal(uri.toString()))
+    toInsert[1].push(sql.literal(cid.toString()))
+    toInsert[2].push(sql.literal(uri.host))
+    toInsert[3].push(obj.subject.uri)
+    toInsert[4].push(obj.subject.cid)
+    toInsert[5].push(sql.literal(normalizeDatetimeAlways(obj.createdAt)))
+    toInsert[6].push(sql.literal(timestamp))
+  }
   return db
     .insertInto('like')
     .expression(
       db
         .selectFrom(
-          sql<IndexedLike>`(values ${sql.join(
-            records.map(
-              ({ uri, cid, obj, timestamp }) => sql`
-                (${sql.literal(uri.toString())}, ${sql.literal(cid.toString())}, ${sql.literal(uri.host)}, ${obj.subject.uri}, ${obj.subject.cid}, ${sql.literal(normalizeDatetimeAlways(obj.createdAt))}, ${sql.literal(timestamp)})
-            `,
-            ),
-          )})`.as<'l'>(
+          sql<IndexedLike>`
+            unnest(${sql.join(
+              toInsert.map((arr) => sql`ARRAY[${sql.join(arr)}]`),
+            )})
+          `.as<'l'>(
             sql`l("uri", "cid", "creator", "subject", "subjectCid", "createdAt", "indexedAt")`,
           ),
         )
