@@ -8,6 +8,7 @@ import { Database } from '../../db'
 import { DatabaseSchema, DatabaseSchemaType } from '../../db/database-schema'
 import { Notification } from '../../db/tables/notification'
 import { countAll, excluded } from '../../db/util'
+import { transpose } from '../../util'
 import { RecordProcessor } from '../processor'
 
 const lexId = lex.ids.AppBskyFeedRepost
@@ -68,37 +69,59 @@ const insertBulkFn = async (
     timestamp: string
   }[],
 ): Promise<Array<IndexedRepost>> => {
+  const toInsertRepost = transpose(records, ({ uri, cid, obj, timestamp }) => [
+    uri.toString(),
+    cid.toString(),
+    uri.host,
+    obj.subject.uri,
+    obj.subject.cid,
+    normalizeDatetimeAlways(obj.createdAt),
+    timestamp,
+  ])
+
+  const toInsertFeedItem = transpose(
+    records,
+    ({ uri, cid, obj, timestamp }) => [
+      'post',
+      uri.toString(),
+      cid.toString(),
+      obj.subject.uri,
+      uri.host,
+      timestamp < normalizeDatetimeAlways(obj.createdAt)
+        ? timestamp
+        : normalizeDatetimeAlways(obj.createdAt),
+    ],
+  )
+
   const [inserted] = await Promise.all([
     db
       .insertInto('repost')
-      .values(
-        records.map(({ uri, cid, obj, timestamp }) => ({
-          uri: uri.toString(),
-          cid: cid.toString(),
-          creator: uri.host,
-          subject: obj.subject.uri,
-          subjectCid: obj.subject.cid,
-          createdAt: normalizeDatetimeAlways(obj.createdAt),
-          indexedAt: timestamp,
-        })),
+      .expression(
+        db
+          .selectFrom(
+            sql<IndexedRepost>`
+            unnest(${sql.join(toInsertRepost, sql`::text[], `)}::text[])
+          `.as<'r'>(
+              sql`r("uri", "cid", "creator", "subject", "subjectCid", "createdAt", "indexedAt")`,
+            ),
+          )
+          .selectAll(),
       )
       .onConflict((oc) => oc.doNothing())
       .returningAll()
       .execute(),
     db
       .insertInto('feed_item')
-      .values(
-        records.map(({ uri, cid, obj, timestamp }) => ({
-          type: 'repost' as const,
-          uri: uri.toString(),
-          cid: cid.toString(),
-          postUri: obj.subject.uri,
-          originatorDid: uri.host,
-          sortAt:
-            timestamp < normalizeDatetimeAlways(obj.createdAt)
-              ? timestamp
-              : normalizeDatetimeAlways(obj.createdAt),
-        })),
+      .expression(
+        db
+          .selectFrom(
+            sql`
+            unnest(${sql.join(toInsertFeedItem, sql`::text[], `)}::text[])
+          `.as<'f'>(
+              sql`f("type", "uri", "cid", "postUri", "originatorDid", "sortAt")`,
+            ),
+          )
+          .selectAll(),
       )
       .onConflict((oc) => oc.doNothing())
       .execute(),
@@ -212,7 +235,7 @@ const updateAggregatesBulk = async (
 ) => {
   const repostCountQbs = sql`
     WITH input_values (uri) AS (
-      VALUES(${sql.join(reposts.map((r) => r.subject))})
+      SELECT * FROM UNNEST(${sql`${[reposts.map((r) => r.subject)]}::text[]`})
     )
     INSERT INTO post_agg ("uri", "repostCount")
     SELECT
