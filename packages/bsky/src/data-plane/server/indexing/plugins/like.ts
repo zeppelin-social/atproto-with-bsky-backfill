@@ -1,4 +1,4 @@
-import { Insertable, RawBuilder, Selectable, sql } from 'kysely'
+import { Insertable, Selectable, sql } from 'kysely'
 import { CID } from 'multiformats/cid'
 import { AtUri, normalizeDatetimeAlways } from '@atproto/syntax'
 import * as lex from '../../../../lexicon/lexicons'
@@ -8,6 +8,7 @@ import { Database } from '../../db'
 import { DatabaseSchema, DatabaseSchemaType } from '../../db/database-schema'
 import { Notification } from '../../db/tables/notification'
 import { countAll, excluded } from '../../db/util'
+import { transpose } from '../../util'
 import { RecordProcessor } from '../processor'
 
 const lexId = lex.ids.AppBskyFeedLike
@@ -50,35 +51,23 @@ const insertBulkFn = async (
     timestamp: string
   }[],
 ): Promise<Array<IndexedLike>> => {
-  // Transpose into an array per column to bypass the length limit on VALUES lists
-  // sql.literal() is unsafe, so we compromise by not calling it on user-provided values
-  const toInsert: [
-    uri: Array<RawBuilder<unknown>>,
-    cid: Array<RawBuilder<unknown>>,
-    creator: Array<RawBuilder<unknown>>,
-    subject: Array<string>,
-    subjectCid: Array<string>,
-    createdAt: Array<RawBuilder<unknown>>,
-    indexedAt: Array<RawBuilder<unknown>>,
-  ] = [[], [], [], [], [], [], []]
-  for (const { uri, cid, obj, timestamp } of records) {
-    toInsert[0].push(sql.literal(uri.toString()))
-    toInsert[1].push(sql.literal(cid.toString()))
-    toInsert[2].push(sql.literal(uri.host))
-    toInsert[3].push(obj.subject.uri)
-    toInsert[4].push(obj.subject.cid)
-    toInsert[5].push(sql.literal(normalizeDatetimeAlways(obj.createdAt)))
-    toInsert[6].push(sql.literal(timestamp))
-  }
+  const toInsert = transpose(records, ({ uri, cid, obj, timestamp }) => [
+    uri.toString(),
+    cid.toString(),
+    uri.host,
+    obj.subject.uri,
+    obj.subject.cid,
+    normalizeDatetimeAlways(obj.createdAt),
+    timestamp,
+  ])
+
   return db
     .insertInto('like')
     .expression(
       db
         .selectFrom(
           sql<IndexedLike>`
-            unnest(${sql.join(
-              toInsert.map((arr) => sql`ARRAY[${sql.join(arr)}]`),
-            )})
+            unnest(${sql.join(toInsert, sql`::text[], `)}::text[])
           `.as<'l'>(
             sql`l("uri", "cid", "creator", "subject", "subjectCid", "createdAt", "indexedAt")`,
           ),
@@ -88,6 +77,9 @@ const insertBulkFn = async (
     .onConflict((oc) => oc.doNothing())
     .returningAll()
     .execute()
+    .catch((e) => {
+      throw new Error('Failed to insert likes', { cause: e })
+    })
 }
 
 const findDuplicate = async (
@@ -190,19 +182,21 @@ const updateAggregatesBulk = async (
 ) => {
   const likeCountQbs = sql`
     WITH input_values (uri) AS (
-      SELECT * FROM unnest(${sql`${[likes.map((l) => l.subject)]}::text[]`})
+      SELECT * FROM unnest(${sql`${[likes.map((l) => l.subject)]}`}::text[])
     )
     INSERT INTO post_agg ("uri", "likeCount")
     SELECT
-      v.uri,
-      count(like.uri) AS likeCount
+      "v"."uri",
+      count("like"."uri") AS "likeCount"
     FROM
-      input_values AS v
-      LEFT JOIN like ON like.subject = v.uri
-    GROUP BY v.uri
-    ON CONFLICT (uri) DO UPDATE SET "likeCount" = excluded."likeCount"
+      "input_values" AS "v"
+      LEFT JOIN "like" ON "like"."subject" = "v"."uri"
+    GROUP BY "v"."uri"
+    ON CONFLICT (uri) DO UPDATE SET "likeCount" = "excluded"."likeCount"
   `
-  await likeCountQbs.execute(db)
+  await likeCountQbs.execute(db).catch((e) => {
+    throw new Error('Failed to update aggregates', { cause: e })
+  })
 }
 
 export type PluginType = RecordProcessor<Like.Record, IndexedLike>
