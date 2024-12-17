@@ -7,7 +7,7 @@ import { BackgroundQueue } from '../../background'
 import { Database } from '../../db'
 import { DatabaseSchema, DatabaseSchemaType } from '../../db/database-schema'
 import { countAll, excluded } from '../../db/util'
-import { transpose } from '../../util'
+import { executeRaw, transpose } from '../../util'
 import RecordProcessor from '../processor'
 
 const lexId = lex.ids.AppBskyGraphFollow
@@ -54,22 +54,17 @@ const insertBulkFn = async (
     timestamp,
   ])
 
-  return db
-    .insertInto('follow')
-    .expression(
-      db
-        .selectFrom(
-          sql<IndexedFollow>`
-            unnest(${sql.join(toInsert, sql`::text[], `)}::text[])
-          `.as<'f'>(
-            sql`f("uri", "cid", "creator", "subjectDid", "createdAt", "indexedAt")`,
-          ),
-        )
-        .selectAll(),
-    )
-    .onConflict((oc) => oc.doNothing())
-    .returningAll()
-    .execute()
+  const { rows } = await executeRaw<IndexedFollow>(
+    db,
+    `
+      INSERT INTO follow ("uri", "cid", "creator", "subjectDid", "createdAt", "indexedAt")
+      SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
+      ON CONFLICT DO NOTHING
+      RETURNING *
+    `,
+    toInsert,
+  )
+  return rows
 }
 
 const findDuplicate = async (
