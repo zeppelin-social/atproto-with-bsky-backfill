@@ -8,7 +8,7 @@ import { Database } from '../../db'
 import { DatabaseSchema, DatabaseSchemaType } from '../../db/database-schema'
 import { Notification } from '../../db/tables/notification'
 import { countAll, excluded } from '../../db/util'
-import { copyIntoTable, executeRaw, transpose } from '../../util'
+import { copyIntoTable } from '../../util'
 import { RecordProcessor } from '../processor'
 
 const lexId = lex.ids.AppBskyFeedRepost
