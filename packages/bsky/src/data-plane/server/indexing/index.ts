@@ -127,7 +127,6 @@ export class IndexingService {
       obj: unknown
       timestamp: string
     }>,
-    opts?: { disableNotifs?: boolean; disableLabels?: boolean },
   ) {
     this.db.assertNotTransaction()
     await this.db.transaction(async (txn) => {
