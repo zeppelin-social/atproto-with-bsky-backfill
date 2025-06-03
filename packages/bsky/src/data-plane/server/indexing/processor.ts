@@ -76,16 +76,17 @@ export class RecordProcessor<T, S> {
     cid: CID,
     obj: unknown,
     timestamp: string,
-    opts?: { disableNotifs?: boolean },
+    opts?: { disableNotifs?: boolean; disableValidation?: boolean },
   ) {
-    this.assertValidRecord(obj)
+    if (!opts?.disableValidation) this.assertValidRecord(obj)
+    const record = obj as T
     await this.db
       .insertInto('record')
       .values({
         uri: uri.toString(),
         cid: cid.toString(),
         did: uri.host,
-        json: stringifyLex(obj),
+        json: stringifyLex(record),
         indexedAt: timestamp,
       })
       .onConflict((oc) => oc.doNothing())
@@ -94,7 +95,7 @@ export class RecordProcessor<T, S> {
       this.db,
       uri,
       cid,
-      obj,
+      record,
       timestamp,
     )
     if (inserted) {
@@ -105,7 +106,7 @@ export class RecordProcessor<T, S> {
       return
     }
     // if duplicate, insert into duplicates table with no events
-    const found = await this.params.findDuplicate(this.db, uri, obj)
+    const found = await this.params.findDuplicate(this.db, uri, record)
     if (found && found.toString() !== uri.toString()) {
       await this.db
         .insertInto('duplicate_record')
@@ -128,6 +129,7 @@ export class RecordProcessor<T, S> {
       obj: unknown
       timestamp: string
     }>,
+    disableValidation = false,
   ) {
     const validRecords: Array<{
       uri: AtUri
@@ -138,11 +140,11 @@ export class RecordProcessor<T, S> {
     for (const record of records) {
       const { did, path, cid, obj, timestamp } = record
       try {
-        this.assertValidRecord(obj)
+        if (!disableValidation) this.assertValidRecord(obj)
         validRecords.push({
           uri: new AtUri(`at://${did}/${path}`),
           cid: CID.parse(cid),
-          obj,
+          obj: obj as T,
           timestamp,
         })
       } catch {

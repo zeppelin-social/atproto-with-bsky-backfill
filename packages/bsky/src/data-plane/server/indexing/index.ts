@@ -99,7 +99,11 @@ export class IndexingService {
     obj: unknown,
     action: WriteOpAction.Create | WriteOpAction.Update,
     timestamp: string,
-    opts?: { disableNotifs?: boolean; disableLabels?: boolean },
+    opts?: {
+      disableNotifs?: boolean
+      disableLabels?: boolean
+      disableValidation?: boolean
+    },
   ) {
     this.db.assertNotTransaction()
     await this.db.transaction(async (txn) => {
@@ -130,7 +134,7 @@ export class IndexingService {
       const indexingTx = this.transact(txn)
       const indexer = indexingTx.findIndexerForCollection(collection)
       if (!indexer) return
-      await indexer.insertBulkRecords(records)
+      await indexer.insertBulkRecords(records, opts?.disableValidation)
     })
   }
 
@@ -147,6 +151,7 @@ export class IndexingService {
         timestamp: string
       }>
     >,
+    opts?: { disableValidation?: boolean },
   ) {
     const allRecords = [...records.values()].flat()
     if (!allRecords.length) return
@@ -163,25 +168,15 @@ export class IndexingService {
             console.warn(`No indexer for collection ${collection}`)
             return
           }
-          return indexer.insertBulkRecords(records).catch((e) => {
-            throw new Error(
-              `Failed to bulk insert records for collection ${collection}`,
-              { cause: e },
-            )
-          })
+          return indexer
+            .insertBulkRecords(records, opts?.disableValidation)
+            .catch((e) => {
+              throw new Error(
+                `Failed to bulk insert records for collection ${collection}`,
+                { cause: e },
+              )
+            })
         }),
-        // copyIntoTable(
-        //   this.db.pool,
-        //   'record',
-        //   ['uri', 'cid', 'did', 'json', 'indexedAt'],
-        //   allRecords.map(({ uri, cid, obj, timestamp }) => ({
-        //     uri: uri.toString(),
-        //     cid: cid.toString(),
-        //     did: uri.host,
-        //     json: stringifyLex(obj),
-        //     indexedAt: timestamp,
-        //   })),
-        // ),
       ])
     })
   }
@@ -194,6 +189,7 @@ export class IndexingService {
       obj: unknown
       timestamp: string
     }>,
+    opts?: { disableValidation?: boolean },
   ) {
     if (!records.length) return
 
