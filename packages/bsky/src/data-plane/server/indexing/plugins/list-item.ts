@@ -57,39 +57,6 @@ const findDuplicate = async (
   return found ? new AtUri(found.uri) : null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: ListItem.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedListItem>> => {
-//   const toInsert = transpose(records, ({ uri, cid, obj, timestamp }) => [
-//     /* uri: */ uri.toString(),
-//     /* cid: */ cid.toString(),
-//     /* creator: */ uri.host,
-//     /* subjectDid: */ obj.subject,
-//     /* listUri: */ obj.list,
-//     /* createdAt: */ normalizeDatetimeAlways(obj.createdAt),
-//     /* indexedAt: */ timestamp,
-//   ])
-//   return executeRaw<IndexedListItem>(
-//     db,
-//     `
-//     INSERT INTO list_item ("uri", "cid", "creator", "subjectDid", "listUri", "createdAt", "indexedAt")
-//     SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[])
-//     ON CONFLICT DO NOTHING
-//   `,
-//     toInsert,
-//   )
-//     .then((r) => r.rows)
-//     .catch((e) => {
-//       throw new Error(`Failed to insert list items`, { cause: e })
-//     })
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

@@ -39,42 +39,6 @@ const insertFn = async (
   return inserted || null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: Profile.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedProfile>> => {
-//   const toInsert = transpose(records, ({ uri, cid, obj, timestamp }) => [
-//     /* uri: */ uri.toString(),
-//     /* cid: */ cid.toString(),
-//     /* creator: */ uri.host,
-//     /* displayName: */ obj.displayName,
-//     /* description: */ obj.description,
-//     /* avatarCid: */ obj.avatar?.ref.toString(),
-//     /* bannerCid: */ obj.banner?.ref.toString(),
-//     /* joinedViaStarterPackUri: */ obj.joinedViaStarterPack?.uri,
-//     /* createdAt: */ obj.createdAt ?? new Date().toISOString(),
-//     /* indexedAt: */ timestamp,
-//   ])
-//   return executeRaw<IndexedProfile>(
-//     db,
-//     `
-//       INSERT INTO profile ("uri", "cid", "creator", "displayName", "description", "avatarCid", "bannerCid", "joinedViaStarterPackUri", "createdAt", "indexedAt")
-//       SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[], $10::text[])
-//       ON CONFLICT DO NOTHING
-//     `,
-//     toInsert,
-//   )
-//     .then((r) => r.rows)
-//     .catch((e) => {
-//       throw new Error(`Failed to insert profiles`, { cause: e })
-//     })
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

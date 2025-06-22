@@ -42,40 +42,6 @@ const insertFn = async (
   return inserted || null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: Like.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedLike>> => {
-//   const toInsert = transpose(records, ({ uri, cid, obj, timestamp }) => [
-//     /* uri: */ uri.toString(),
-//     /* cid: */ cid.toString(),
-//     /* creator: */ uri.host,
-//     /* subject: */ obj.subject.uri,
-//     /* subjectCid: */ obj.subject.cid,
-//     /* createdAt: */ normalizeDatetimeAlways(obj.createdAt),
-//     /* indexedAt: */ timestamp,
-//   ])
-//
-//   const { rows } = await executeRaw<IndexedLike>(
-//     db,
-//     `
-//           INSERT INTO "like" ("uri", "cid", "creator", "subject", "subjectCid", "createdAt", "indexedAt")
-//             SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[])
-//           ON CONFLICT DO NOTHING
-//           RETURNING *
-//         `,
-//     toInsert,
-//   ).catch((e) => {
-//     throw new Error('Failed to insert likes', { cause: e })
-//   })
-//   return rows
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

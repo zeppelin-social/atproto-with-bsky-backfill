@@ -36,39 +36,6 @@ const insertFn = async (
   return inserted || null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: Follow.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedFollow>> => {
-//   const toInsert = transpose(records, ({ uri, cid, obj, timestamp }) => [
-//     uri.toString(),
-//     cid.toString(),
-//     uri.host,
-//     obj.subject,
-//     normalizeDatetimeAlways(obj.createdAt),
-//     timestamp,
-//   ])
-//
-//   const { rows } = await executeRaw<IndexedFollow>(
-//     db,
-//     `
-//       INSERT INTO follow ("uri", "cid", "creator", "subjectDid", "createdAt", "indexedAt")
-//       SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
-//       ON CONFLICT DO NOTHING
-//       RETURNING *
-//     `,
-//     toInsert,
-//   ).catch((e) => {
-//     throw new Error('Failed to insert follows', { cause: e })
-//   })
-//   return rows
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

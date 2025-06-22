@@ -323,7 +323,6 @@ const insertBulkFn = async (
     }
   })
 
-  // console.time('post: insert posts')
   await Promise.all([
     copyIntoTable(
       db.pool,
@@ -366,54 +365,7 @@ const insertBulkFn = async (
       }),
     ),
   ])
-  // console.timeEnd('post: insert posts')
 
-  // const invalidReplyUpdates = await Promise.all(
-  //   insertedPosts.map(async (insertedPost) => {
-  //     if (insertedPost.replyParent || insertedPost.replyRoot) {
-  //       const record = records.find((r) => r.uri.href === insertedPost.uri)?.obj
-  //       if (!record?.reply) return
-  //
-  //       const { invalidReplyRoot, violatesThreadGate } = await validateReply(
-  //         db.db,
-  //         insertedPost.creator,
-  //         record.reply,
-  //       )
-  //
-  //       if (invalidReplyRoot || violatesThreadGate) {
-  //         Object.assign(insertedPost, { invalidReplyRoot, violatesThreadGate })
-  //         return {
-  //           uri: insertedPost.uri,
-  //           invalidReplyRoot,
-  //           violatesThreadGate,
-  //         }
-  //       }
-  //     }
-  //   }),
-  // )
-  //
-  // const toInsertInvalidReplyUpdates = transpose(
-  //   invalidReplyUpdates.filter((u) => !!u),
-  //   ({ uri, invalidReplyRoot, violatesThreadGate }) => [
-  //     uri,
-  //     invalidReplyRoot,
-  //     violatesThreadGate,
-  //   ],
-  // )
-  //
-  // const invalidReplyUpdatesQuery = executeRaw(
-  //   db.db,
-  //   `
-  //   UPDATE post SET "invalidReplyRoot" = v."invalidReplyRoot", "violatesThreadGate" = v."violatesThreadGate"
-  //   FROM (
-  //     SELECT * FROM unnest($1::text[], $2::boolean[], $3::boolean[]) AS t(uri, "invalidReplyRoot", "violatesThreadGate")
-  //   ) as v
-  //   WHERE post.uri = v.uri
-  // `,
-  //   toInsertInvalidReplyUpdates,
-  // )
-
-  // console.time('post: collect embeds')
   const insertRows: {
     post_embed_image?: Record<
       keyof DatabaseSchemaType['post_embed_image'],
@@ -437,8 +389,6 @@ const insertBulkFn = async (
     >[]
     post_agg_quotedPosts?: Map<string, string>
   } = {}
-  // const toValidatePostEmbeds: Array<{ parentUri: string; embedUri: string }> =
-  //   []
 
   for (const post of toInsertPosts) {
     const postEmbeds = separateEmbeds(post.obj.embed)
@@ -502,11 +452,6 @@ const insertBulkFn = async (
 
           insertRows.post_agg_quotedPosts ??= new Map()
           insertRows.post_agg_quotedPosts.set(record.cid, record.uri)
-
-          // toValidatePostEmbeds.push({
-          //   parentUri: post.uri,
-          //   embedUri: record.uri,
-          // })
         }
       } else if (isEmbedVideo(postEmbed)) {
         const { video } = postEmbed
@@ -523,33 +468,6 @@ const insertBulkFn = async (
     }
   }
 
-  // const validatedPostEmbeds = await validatePostEmbedsBulk(
-  //   db.db,
-  //   toValidatePostEmbeds,
-  // )
-  //
-  // const toInsertViolatesEmbeddingRules = transpose(
-  //   validatedPostEmbeds ?? [],
-  //   (v) => [v.parentUri, v.violatesEmbeddingRules],
-  // )
-  // const violatesEmbeddingRulesQuery =
-  //   validatedPostEmbeds?.length &&
-  //   executeRaw(
-  //     db.db,
-  //     `
-  //     UPDATE post SET "violatesEmbeddingRules" = v."violatesEmbeddingRules"
-  //     FROM (
-  //       SELECT * FROM unnest($1::text[], $2::boolean[]) AS t(uri, "violatesEmbeddingRules")
-  //     ) as v
-  //     WHERE post.uri = v.uri
-  //   `,
-  //     toInsertViolatesEmbeddingRules,
-  //   ).catch((e) => {
-  //     throw new Error('Failed to update violatesEmbeddingRules', { cause: e })
-  //   })
-  // console.timeEnd('post: collect embeds')
-
-  // console.time('post: insert embeds')
   await Promise.all([
     insertRows.post_embed_image &&
       copyIntoTable(
@@ -610,11 +528,9 @@ const insertBulkFn = async (
         .catch((e) => {
           throw new Error('Failed to update aggregates', { cause: e })
         }),
-    // violatesEmbeddingRulesQuery,
   ])
-  // console.timeEnd('post: insert embeds')
 
-  // @ts-expect-error
+  // @ts-expect-error - missing threadgate/postgate validation
   return toInsertPosts.map((post) => ({ post }))
 }
 
@@ -991,57 +907,6 @@ async function validatePostEmbed(
     violatesEmbeddingRules: true,
   }
 }
-
-// async function validatePostEmbedsBulk(
-//   db: DatabaseSchema,
-//   embeds: Array<{ parentUri: string; embedUri: string }>,
-// ) {
-//   const uris = embeds.reduce(
-//     (acc, { parentUri, embedUri }) => {
-//       const postgateRecordUri = embedUri.replace(
-//         'app.bsky.feed.post',
-//         'app.bsky.feed.postgate',
-//       )
-//       acc[postgateRecordUri] = { parentUri, embedUri }
-//       return acc
-//     },
-//     {} as Record<string, { parentUri: string; embedUri: string }>,
-//   )
-//
-//   const { rows: postgateRecords } = await executeRaw<
-//     DatabaseSchemaType['record']
-//   >(
-//     db,
-//     `
-//     SELECT * FROM record WHERE record.uri = ANY($1::text[])
-//     `,
-//     [Object.keys(uris)],
-//   )
-//
-//   return postgateRecords.reduce(
-//     (acc, record) => {
-//       if (!record.json || !uris[record.uri]) return acc
-//       const {
-//         embeddingRules: { canEmbed },
-//       } = parsePostgate({
-//         gate: jsonStringToLex(record.json) as PostgateRecord,
-//         viewerDid: uriToDid(uris[record.uri].parentUri),
-//         authorDid: uriToDid(uris[record.uri].embedUri),
-//       })
-//       acc.push({
-//         parentUri: uris[record.uri].parentUri,
-//         embedUri: uris[record.uri].embedUri,
-//         violatesEmbeddingRules: !canEmbed,
-//       })
-//       return acc
-//     },
-//     [] as Array<{
-//       parentUri: string
-//       embedUri: string
-//       violatesEmbeddingRules: boolean
-//     }>,
-//   )
-// }
 
 async function getReplyRefs(db: DatabaseSchema, reply: ReplyRef) {
   const replyRoot = reply.root.uri
