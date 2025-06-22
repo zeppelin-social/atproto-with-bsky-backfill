@@ -6,7 +6,7 @@ import * as Threadgate from '../../../../lexicon/types/app/bsky/feed/threadgate'
 import { BackgroundQueue } from '../../background'
 import { Database } from '../../db'
 import { DatabaseSchema, DatabaseSchemaType } from '../../db/database-schema'
-import { copyIntoTable, executeRaw, transpose } from '../../util'
+import { copyIntoTable } from '../../util'
 import RecordProcessor from '../processor'
 
 const lexId = lex.ids.AppBskyFeedThreadgate
