@@ -230,12 +230,30 @@ export const copyIntoTable = async <
     ),
   )
 
-  stream.on('error', (err) => {
-    console.error(
-      `COPY "${tempTable}" (${columnsStr}) FROM STDIN WITH (FORMAT csv, HEADER false, DELIMITER E'\u0007', QUOTE E'\u0006')`,
-    )
-    console.error(err)
-  })
+  const promise = new Promise<Rows>((resolve, reject) => {
+    stream.once('finish', async () => {
+      await client
+        .query(
+          `
+          INSERT INTO "${table}" (${columnsStr})
+          SELECT ${columnsStr} FROM "${tempTable}"
+          ON CONFLICT DO NOTHING
+          `,
+        )
+        .catch((e) => {
+          throw new Error(`Failed to insert into ${table}`, { cause: e })
+        })
+      await client.query(`COMMIT`)
+      resolve(rows)
+    })
+
+    stream.on('error', (err) => {
+      console.error(
+        `Error in COPY "${tempTable}" (${columnsStr}) FROM STDIN WITH (FORMAT csv, HEADER false, DELIMITER E'\u0007', QUOTE E'\u0006')`,
+      )
+      reject(err)
+    })
+  }).finally(() => client.release())
 
   const matchNull = /\u0000/g
 
@@ -256,23 +274,6 @@ export const copyIntoTable = async <
       .join('\n'),
   )
 
-  const promise = new Promise<Rows>((resolve) =>
-    stream.once('finish', async () => {
-      await client
-        .query(
-          `
-          INSERT INTO "${table}" (${columnsStr})
-          SELECT ${columnsStr} FROM "${tempTable}"
-          ON CONFLICT DO NOTHING
-          `,
-        )
-        .catch((e) => {
-          throw new Error(`Failed to insert into ${table}`, { cause: e })
-        })
-      await client.query(`COMMIT`)
-      resolve(rows)
-    }),
-  ).finally(() => client.release())
   stream.end()
   return promise
 }
