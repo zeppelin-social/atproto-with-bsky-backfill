@@ -168,18 +168,6 @@ export class IndexingService {
             )
           })
         }),
-        // copyIntoTable(
-        //   this.db.pool,
-        //   'record',
-        //   ['uri', 'cid', 'did', 'json', 'indexedAt'],
-        //   allRecords.map(({ uri, cid, obj, timestamp }) => ({
-        //     uri: uri.toString(),
-        //     cid: cid.toString(),
-        //     did: uri.host,
-        //     json: stringifyLex(obj),
-        //     indexedAt: timestamp,
-        //   })),
-        // ),
       ])
     })
   }

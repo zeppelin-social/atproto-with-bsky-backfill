@@ -41,38 +41,6 @@ const insertFn = async (
   return inserted || null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: FeedGenerator.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedFeedGenerator>> => {
-//   return db
-//     .insertInto('feed_generator')
-//     .values(
-//       records.map(({ uri, cid, obj, timestamp }) => ({
-//         uri: uri.toString(),
-//         cid: cid.toString(),
-//         creator: uri.host,
-//         feedDid: obj.did,
-//         displayName: obj.displayName,
-//         description: obj.description,
-//         descriptionFacets: obj.descriptionFacets
-//           ? JSON.stringify(obj.descriptionFacets)
-//           : undefined,
-//         avatarCid: obj.avatar?.ref.toString(),
-//         createdAt: normalizeDatetimeAlways(obj.createdAt),
-//         indexedAt: timestamp,
-//       })),
-//     )
-//     .onConflict((oc) => oc.doNothing())
-//     .returningAll()
-//     .execute()
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

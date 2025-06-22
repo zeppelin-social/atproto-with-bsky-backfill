@@ -35,38 +35,6 @@ const insertFn = async (
   return inserted || null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: ListBlock.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedListBlock>> => {
-//   const toInsert = transpose(records, ({ uri, cid, obj, timestamp }) => [
-//     /* uri: */ uri.toString(),
-//     /* cid: */ cid.toString(),
-//     /* creator: */ uri.host,
-//     /* subjectUri: */ obj.subject,
-//     /* createdAt: */ normalizeDatetimeAlways(obj.createdAt),
-//     /* indexedAt: */ timestamp,
-//   ])
-//   return executeRaw<IndexedListBlock>(
-//     db,
-//     `
-//       INSERT INTO list_block ("uri", "cid", "creator", "subjectUri", "createdAt", "indexedAt")
-//       SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[])
-//       ON CONFLICT DO NOTHING
-//     `,
-//     toInsert,
-//   )
-//     .then((r) => r.rows)
-//     .catch((e) => {
-//       throw new Error(`Failed to insert list blocks`, { cause: e })
-//     })
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

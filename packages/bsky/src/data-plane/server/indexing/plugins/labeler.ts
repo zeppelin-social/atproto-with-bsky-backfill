@@ -35,31 +35,6 @@ const insertFn = async (
   return inserted || null
 }
 
-// const insertBulkFn = async (
-//   db: DatabaseSchema,
-//   records: {
-//     uri: AtUri
-//     cid: CID
-//     obj: Labeler.Record
-//     timestamp: string
-//   }[],
-// ): Promise<Array<IndexedLabeler>> => {
-//   return db
-//     .insertInto('labeler')
-//     .values(
-//       records.map(({ uri, cid, obj, timestamp }) => ({
-//         uri: uri.toString(),
-//         cid: cid.toString(),
-//         creator: uri.host,
-//         createdAt: normalizeDatetimeAlways(obj.createdAt),
-//         indexedAt: timestamp,
-//       })),
-//     )
-//     .onConflict((oc) => oc.doNothing())
-//     .returningAll()
-//     .execute()
-// }
-
 const insertBulkFn = async (
   db: Database,
   records: {

@@ -139,34 +139,9 @@ export class RecordProcessor<T, S> {
 
     return this.params.insertBulkFn(
       this.appDb,
-      validRecords as any, // `records.obj` is expected to be T but is unknown; we know it's T due to the assertValidRecord call above
+      // @ts-expect-error - validRecords is expected to be T but is unknown; we know it's T due to the assertValidRecord call above
+      validRecords,
     )
-    // this.aggregateOnCommitBulk(insertedRecords)
-
-    /* Ignore notifications when bulk inserting */
-    // for (const inserted of insertedRecords) {
-    //   if (!opts?.disableNotifs) {
-    //     await this.handleNotifs({ inserted })
-    //   }
-    //
-    //   /* This is useless as far as I can tell */
-    //   // const dupe = await this.params.findDuplicate(
-    //   //   this.db,
-    //   //   record.atUri,
-    //   //   record.obj as T, // we know it's T due to the assertValidRecord call above
-    //   // )
-    //   // if (dupe) {
-    //   //   await this.db
-    //   //     .updateTable('duplicate_record')
-    //   //     .where('uri', '=', record.uri)
-    //   //     .set({
-    //   //       cid: record.cid,
-    //   //       duplicateOf: dupe.toString(),
-    //   //       indexedAt: record.indexedAt,
-    //   //     })
-    //   //     .execute()
-    //   // }
-    // }
   }
 
   // Currently using a very simple strategy for updates: purge the existing index
