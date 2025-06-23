@@ -122,14 +122,18 @@ export class IndexingService {
       obj: unknown
       timestamp: string
     }>,
-    opts?: { disableNotifs?: boolean; disableLabels?: boolean },
+    opts?: {
+      disableNotifs?: boolean
+      disableLabels?: boolean
+      validate?: boolean
+    },
   ) {
     this.db.assertNotTransaction()
     await this.db.transaction(async (txn) => {
       const indexingTx = this.transact(txn)
       const indexer = indexingTx.findIndexerForCollection(collection)
       if (!indexer) return
-      await indexer.insertBulkRecords(records)
+      await indexer.insertBulkRecords(records, { validate: opts?.validate })
     })
   }
 
@@ -145,6 +149,7 @@ export class IndexingService {
         timestamp: string
       }>
     >,
+    opts?: { validate?: boolean },
   ) {
     const allRecords = [...records.values()].flat()
     if (!allRecords.length) return
@@ -161,7 +166,7 @@ export class IndexingService {
             console.warn(`No indexer for collection ${collection}`)
             return
           }
-          return indexer.insertBulkRecords(records).catch((e) => {
+          return indexer.insertBulkRecords(records, opts).catch((e) => {
             throw new Error(
               `Failed to bulk insert records for collection ${collection}`,
               { cause: e },

@@ -127,15 +127,19 @@ export class RecordProcessor<T, S> {
       obj: unknown
       timestamp: string
     }>,
+    opts?: { validate?: boolean },
   ) {
-    const validRecords = records.filter(({ obj }) => {
-      try {
-        this.assertValidRecord(obj)
-        return true
-      } catch {
-        return false
-      }
-    })
+    const validRecords =
+      opts?.validate === false
+        ? records
+        : records.filter(({ obj }) => {
+            try {
+              this.assertValidRecord(obj)
+              return true
+            } catch {
+              return false
+            }
+          })
 
     return this.params.insertBulkFn(
       this.appDb,
