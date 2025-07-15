@@ -1,8 +1,8 @@
 {
-  "name": "@futuristick/atproto-bsky",
-  "version": "0.0.162-insert-batching.1",
+  "name": "@zeppelin-social/bsky-backfill",
+  "version": "0.0.171",
   "license": "MIT",
-  "description": "Reference implementation of app.bsky App View (Bluesky API)",
+  "description": "The Bluesky AppView with support for bulk backfill",
   "keywords": [
     "atproto",
     "bluesky"
