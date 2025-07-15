@@ -20,6 +20,13 @@ const insertFn = async (
   return true
 }
 
+const insertBulkFn = async (
+  _db: Database,
+  _records: { uri: AtUri }[],
+): Promise<Array<unknown | null>> => {
+  return _records.map((r) => (r.uri.rkey === 'self' ? true : null))
+}
+
 const findDuplicate = async (): Promise<AtUri | null> => {
   return null
 }
@@ -49,6 +56,7 @@ export const makePlugin = (
   return new RecordProcessor(db, background, {
     lexId,
     insertFn,
+    insertBulkFn,
     findDuplicate,
     deleteFn,
     notifsForInsert,
