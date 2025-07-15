@@ -261,15 +261,18 @@ export const copyIntoTable = async <
     rows
       .map((row) =>
         columns
-          .map((c) =>
-            row[c] != null
-              ? `\u0006${
-                  typeof row[c] === 'string' ? row[c] : JSON.stringify(row[c])
-                }\u0006`
-              : '',
-          )
+          .map((c) => {
+            if (row[c] == null) return ''
+            const str = JSON.stringify(row[c])
+            if (str === '' || str === '{}') return ''
+            if (typeof row[c] === 'string') {
+              // replace quotes with \u0006 quotes
+              return `\u0006${str.slice(1, -1)}\u0006`
+            }
+            return `\u0006${str}\u0006`
+          })
           .join('\u0007')
-          .replace(matchNull, ''),
+          .replaceAll(matchNull, ''),
       )
       .join('\n'),
   )
