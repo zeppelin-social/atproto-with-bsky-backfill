@@ -76,9 +76,9 @@ export class RecordProcessor<T, S> {
     cid: CID,
     obj: unknown,
     timestamp: string,
-    opts?: { disableNotifs?: boolean },
+    opts?: { disableNotifs?: boolean; skipValidation?: boolean },
   ) {
-    this.assertValidRecord(obj)
+    if (!opts?.skipValidation) this.assertValidRecord(obj)
     await this.db
       .insertInto('record')
       .values({
@@ -94,7 +94,7 @@ export class RecordProcessor<T, S> {
       this.db,
       uri,
       cid,
-      obj,
+      obj as T,
       timestamp,
     )
     if (inserted) {
@@ -105,7 +105,7 @@ export class RecordProcessor<T, S> {
       return
     }
     // if duplicate, insert into duplicates table with no events
-    const found = await this.params.findDuplicate(this.db, uri, obj)
+    const found = await this.params.findDuplicate(this.db, uri, obj as T)
     if (found && found.toString() !== uri.toString()) {
       await this.db
         .insertInto('duplicate_record')
@@ -157,9 +157,9 @@ export class RecordProcessor<T, S> {
     cid: CID,
     obj: unknown,
     timestamp: string,
-    opts?: { disableNotifs?: boolean },
+    opts?: { disableNotifs?: boolean; skipValidation?: boolean },
   ) {
-    this.assertValidRecord(obj)
+    if (!opts?.skipValidation) this.assertValidRecord(obj)
     await this.db
       .updateTable('record')
       .where('uri', '=', uri.toString())
@@ -170,7 +170,7 @@ export class RecordProcessor<T, S> {
       })
       .execute()
     // If the updated record was a dupe, update dupe info for it
-    const dupe = await this.params.findDuplicate(this.db, uri, obj)
+    const dupe = await this.params.findDuplicate(this.db, uri, obj as T)
     if (dupe) {
       await this.db
         .updateTable('duplicate_record')
@@ -198,7 +198,7 @@ export class RecordProcessor<T, S> {
       this.db,
       uri,
       cid,
-      obj,
+      obj as T,
       timestamp,
     )
     if (!inserted) {

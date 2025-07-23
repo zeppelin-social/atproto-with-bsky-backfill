@@ -102,7 +102,11 @@ export class IndexingService {
     obj: unknown,
     action: WriteOpAction.Create | WriteOpAction.Update,
     timestamp: string,
-    opts?: { disableNotifs?: boolean; disableLabels?: boolean },
+    opts?: {
+      disableNotifs?: boolean
+      disableLabels?: boolean
+      skipValidation?: boolean
+    },
   ) {
     this.db.assertNotTransaction()
     await this.db.transaction(async (txn) => {
