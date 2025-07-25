@@ -55,31 +55,37 @@ const insertBulkFn = async (
     timestamp: string
   }[],
 ): Promise<Array<IndexedGate>> => {
-  for (const record of records) {
-    const postUri = new AtUri(record.obj.post)
-    if (postUri.host !== record.uri.host || postUri.rkey !== record.uri.rkey) {
-      throw new InvalidRequestError(
-        'Creator and rkey of thread gate does not match its post',
-      )
-    }
-  }
-
   return copyIntoTable(
     db.pool,
     'thread_gate',
     ['uri', 'cid', 'creator', 'postUri', 'createdAt', 'indexedAt'],
-    records.map(({ uri, cid, obj, timestamp }) => {
+    records.reduce<
+      Array<{
+        uri: string
+        cid: string
+        creator: string
+        postUri: string
+        createdAt: string
+        indexedAt: string
+      }>
+    >((acc, { uri, cid, obj, timestamp }) => {
+      const postUri = new AtUri(obj.post)
+      if (postUri.host !== uri.host || postUri.rkey !== uri.rkey) {
+        return acc
+      }
+
       const createdAt = normalizeDatetimeAlways(obj.createdAt)
       const indexedAt = timestamp
-      return {
+      acc.push({
         uri: uri.toString(),
         cid: cid.toString(),
         creator: uri.host,
         postUri: obj.post,
         createdAt,
         indexedAt,
-      }
-    }),
+      })
+      return acc
+    }, []),
   )
 }
 
