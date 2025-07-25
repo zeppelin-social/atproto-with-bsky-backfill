@@ -191,7 +191,7 @@ export class RecordProcessor<T, S> {
     const deleted = await this.params.deleteFn(this.db, uri)
     if (!deleted) {
       // If a record was updated but hadn't been indexed yet, treat it like a plain insert.
-      return this.insertRecord(uri, cid, obj, timestamp)
+      return this.insertRecord(uri, cid, obj, timestamp, opts)
     }
     this.aggregateOnCommit(deleted)
     const inserted = await this.params.insertFn(
