@@ -281,7 +281,7 @@ export const copyIntoTable = async <
       })
       .join('\u0007')
       .replaceAll(matchNull, '')
-      .replaceAll('\r', '')
+      .replaceAll('\r', '') + '\n'
 
   for (const row of rows) {
     if (!stream.write(formatRow(row))) await once(stream, 'drain')
