@@ -241,7 +241,7 @@ export const copyIntoTable = async <
           `,
         )
         .catch((e) => {
-          throw new Error(`Failed to insert into ${table}`, { cause: e })
+          reject(new Error(`Failed to insert into ${table}`, { cause: e }))
         })
       await client.query(`COMMIT`)
       resolve(rows)
@@ -262,13 +262,22 @@ export const copyIntoTable = async <
       .map((row) =>
         columns
           .map((c) => {
-            if (row[c] == null) return ''
-            const str = JSON.stringify(row[c])
-            if (str === '' || str === '{}') return ''
             if (typeof row[c] === 'string') {
-              // replace quotes with \u0006 quotes
-              return `\u0006${str.slice(1, -1)}\u0006`
+              return `\u0006${row[c]}\u0006`
             }
+
+            if (row[c] == null) return ''
+
+            const str = JSON.stringify(row[c])
+
+            try {
+              JSON.parse(str)
+            } catch {
+              return ''
+            }
+
+            if (str === '' || str === '{}') return ''
+
             return `\u0006${str}\u0006`
           })
           .join('\u0007')
