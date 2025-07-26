@@ -1,6 +1,6 @@
 {
   "name": "@zeppelin-social/bsky-backfill",
-  "version": "0.0.175",
+  "version": "0.0.176",
   "license": "MIT",
   "description": "The Bluesky AppView with support for bulk backfill",
   "keywords": [

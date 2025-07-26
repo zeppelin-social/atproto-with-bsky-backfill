@@ -9,6 +9,7 @@ import { Record as GateRecord } from '../../lexicon/types/app/bsky/feed/threadga
 import { parseThreadGate } from '../../views/util'
 import { DatabaseSchema, DatabaseSchemaType } from './db/database-schema'
 import { valuesList } from './db/util'
+import { once } from 'node:stream'
 
 export const getDescendentsQb = (
   db: DatabaseSchema,
@@ -257,34 +258,34 @@ export const copyIntoTable = async <
 
   const matchNull = /\u0000/g
 
-  stream.write(
-    rows
-      .map((row) =>
-        columns
-          .map((c) => {
-            if (typeof row[c] === 'string') {
-              return `\u0006${row[c]}\u0006`
-            }
+  const formatRow = (row: Rows[number]) =>
+    columns
+      .map((c) => {
+        if (typeof row[c] === 'string') {
+          return `\u0006${row[c]}\u0006`
+        }
 
-            if (row[c] == null) return ''
+        if (row[c] == null) return ''
 
-            const str = JSON.stringify(row[c])
+        const str = JSON.stringify(row[c])
 
-            try {
-              JSON.parse(str)
-            } catch {
-              return ''
-            }
+        try {
+          JSON.parse(str)
+        } catch {
+          return ''
+        }
 
-            if (str === '' || str === '{}') return ''
+        if (str === '' || str === '{}') return ''
 
-            return `\u0006${str}\u0006`
-          })
-          .join('\u0007')
-          .replaceAll(matchNull, ''),
-      )
-      .join('\n'),
-  )
+        return `\u0006${str}\u0006`
+      })
+      .join('\u0007')
+      .replaceAll(matchNull, '')
+      .replaceAll('\r', '')
+
+  for (const row of rows) {
+    if (!stream.write(formatRow(row))) await once(stream, 'drain')
+  }
 
   stream.end()
   return promise
