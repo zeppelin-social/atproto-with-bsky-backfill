@@ -323,49 +323,6 @@ const insertBulkFn = async (
     }
   })
 
-  await Promise.all([
-    copyIntoTable(
-      db.pool,
-      'post',
-      [
-        'uri',
-        'cid',
-        'creator',
-        'text',
-        'createdAt',
-        'replyRoot',
-        'replyRootCid',
-        'replyParent',
-        'replyParentCid',
-        'langs',
-        'tags',
-        'indexedAt',
-      ],
-      toInsertPosts,
-    ),
-    copyIntoTable(
-      db.pool,
-      'feed_item',
-      ['type', 'uri', 'cid', 'postUri', 'originatorDid', 'sortAt'],
-      records.map(({ uri, cid, obj, timestamp }) => {
-        const createdAt = normalizeDatetimeAlways(obj.createdAt)
-        const indexedAt = timestamp
-        const sortAt =
-          new Date(createdAt).getTime() < new Date(indexedAt).getTime()
-            ? createdAt
-            : indexedAt
-        return {
-          type: 'post',
-          uri: uri.toString(),
-          cid: cid.toString(),
-          postUri: uri.toString(),
-          originatorDid: uri.host,
-          sortAt,
-        }
-      }),
-    ),
-  ])
-
   const insertRows: {
     post_embed_image?: Record<
       keyof DatabaseSchemaType['post_embed_image'],
@@ -469,6 +426,46 @@ const insertBulkFn = async (
   }
 
   await Promise.all([
+    copyIntoTable(
+      db.pool,
+      'post',
+      [
+        'uri',
+        'cid',
+        'creator',
+        'text',
+        'createdAt',
+        'replyRoot',
+        'replyRootCid',
+        'replyParent',
+        'replyParentCid',
+        'langs',
+        'tags',
+        'indexedAt',
+      ],
+      toInsertPosts,
+    ),
+    copyIntoTable(
+      db.pool,
+      'feed_item',
+      ['type', 'uri', 'cid', 'postUri', 'originatorDid', 'sortAt'],
+      records.map(({ uri, cid, obj, timestamp }) => {
+        const createdAt = normalizeDatetimeAlways(obj.createdAt)
+        const indexedAt = timestamp
+        const sortAt =
+          new Date(createdAt).getTime() < new Date(indexedAt).getTime()
+            ? createdAt
+            : indexedAt
+        return {
+          type: 'post',
+          uri: uri.toString(),
+          cid: cid.toString(),
+          postUri: uri.toString(),
+          originatorDid: uri.host,
+          sortAt,
+        }
+      }),
+    ),
     insertRows.post_embed_image &&
       copyIntoTable(
         db.pool,
