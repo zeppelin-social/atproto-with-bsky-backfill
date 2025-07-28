@@ -344,7 +344,7 @@ const insertBulkFn = async (
       keyof DatabaseSchemaType['quote'],
       string | null | undefined
     >[]
-    post_agg_quotedPosts?: Map<string, string>
+    // post_agg_quotedPosts?: Map<string, string>
   } = {}
 
   for (const post of toInsertPosts) {
@@ -407,8 +407,8 @@ const insertBulkFn = async (
           insertRows.quote ??= []
           insertRows.quote.push(quote)
 
-          insertRows.post_agg_quotedPosts ??= new Map()
-          insertRows.post_agg_quotedPosts.set(record.cid, record.uri)
+          // insertRows.post_agg_quotedPosts ??= new Map()
+          // insertRows.post_agg_quotedPosts.set(record.cid, record.uri)
         }
       } else if (isEmbedVideo(postEmbed)) {
         const { video } = postEmbed
@@ -501,30 +501,30 @@ const insertBulkFn = async (
         ['uri', 'cid', 'subject', 'subjectCid', 'createdAt', 'indexedAt'],
         insertRows.quote,
       ),
-    insertRows.post_agg_quotedPosts?.size &&
-      db.db
-        .insertInto('post_agg')
-        .columns(['uri', 'quoteCount'])
-        .expression((eb) =>
-          eb
-            .selectFrom('quote')
-            .where(
-              'quote.subjectCid',
-              'in',
-              Array.from(insertRows.post_agg_quotedPosts!.keys()),
-            )
-            .groupBy(['subjectCid', 'subject'])
-            .select(['subject as uri', countAll.as('quoteCount')]),
-        )
-        .onConflict((oc) =>
-          oc
-            .column('uri')
-            .doUpdateSet({ quoteCount: excluded(db.db, 'quoteCount') }),
-        )
-        .execute()
-        .catch((e) => {
-          throw new Error('Failed to update aggregates', { cause: e })
-        }),
+    // insertRows.post_agg_quotedPosts?.size &&
+    //   db.db
+    //     .insertInto('post_agg')
+    //     .columns(['uri', 'quoteCount'])
+    //     .expression((eb) =>
+    //       eb
+    //         .selectFrom('quote')
+    //         .where(
+    //           'quote.subjectCid',
+    //           'in',
+    //           Array.from(insertRows.post_agg_quotedPosts!.keys()),
+    //         )
+    //         .groupBy(['subjectCid', 'subject'])
+    //         .select(['subject as uri', countAll.as('quoteCount')]),
+    //     )
+    //     .onConflict((oc) =>
+    //       oc
+    //         .column('uri')
+    //         .doUpdateSet({ quoteCount: excluded(db.db, 'quoteCount') }),
+    //     )
+    //     .execute()
+    //     .catch((e) => {
+    //       throw new Error('Failed to update aggregates', { cause: e })
+    //     }),
   ])
 
   // @ts-expect-error - missing threadgate/postgate validation
